@@ -1,16 +1,21 @@
 """
-Costco Shopping Agent Demo - Browser Agent with LangGraph
+Greenhouse ATS Browser Agent Demo - Browser Agent with LangGraph
 
-This demo shows the LangGraph-based browser agent shopping at Costco.com.
-Create a .env file with your Azure OpenAI credentials before running.
+This demo shows the LangGraph-based browser agent automating job posting 
+on Greenhouse ATS (Applicant Tracking System).
 
-Task: Find and report the price of a specific product at Costco.
+Task: Login to Greenhouse and create a sample job posting.
 """
 import asyncio
 import logging
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Add parent directory to path to import from simple_browser_agent
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir / 'simple_browser_agent'))
 
 from agent import LangGraphBrowserAgent
 
@@ -27,7 +32,7 @@ logging.basicConfig(
 
 
 async def main():
-    """Run Costco shopping demo with Azure OpenAI"""
+    """Run Greenhouse ATS job posting demo"""
     
     # Validate environment variables are set
     # (Agent will do this too, but check early for better error messages)
@@ -49,50 +54,56 @@ async def main():
     )
     
     # ============================================================
-    # TASK - Grocery shopping with delivery
+    # TASK - Login to Greenhouse and Create Job Posting
     # ============================================================
     
-    task = """Complete a Costco grocery shopping order with the \
-following items:
+    # Get Greenhouse credentials from environment variables
+    greenhouse_email = os.getenv("GREENHOUSE_EMAIL")
+    greenhouse_password = os.getenv("GREENHOUSE_PASSWORD")
+    
+    if not greenhouse_email or not greenhouse_password:
+        raise ValueError(
+            "Missing Greenhouse credentials!\n"
+            "Please set GREENHOUSE_EMAIL and GREENHOUSE_PASSWORD in your .env file.\n"
+            "See env.example for template."
+        )
+    
+    task = f"""You are an autonomous recruiter assistant working with Greenhouse ATS.
 
-SHOPPING LIST:
-1. Paper towels
-2. Milk
-3. Toilet paper
-4. Dish wash (dishwashing detergent)
+YOUR MISSION:
+Navigate to the applications page for a specific job posting.
 
-DELIVERY INFO:
-- Address: 830 Birch Ave, Sunnyvale, CA 94086
-- Recipient: Si Chang
+CREDENTIALS:
+- Login URL: https://app8.greenhouse.io/users/sign_in
+- Email: {greenhouse_email}
+- Password: {greenhouse_password}
 
-STEPS TO COMPLETE:
-1. For each item in the shopping list:
-   - Find the search box and type the item name
-   - Press Enter or click the search button to search
-   - Find and click on the first product in the results
-   - Click "Add to Cart" button to add it to cart
-   - Navigate back to search for the next item (use browser back \
-or go to homepage)
+TARGET JOB:
+Search for "19Sep Part 2 Staff Engineer JobPosting" and access its applications.
 
-2. After adding all 4 items:
-   - Go to cart (click cart icon or navigate to cart page)
-   - Verify all 4 items are in the cart
-   - Proceed to checkout if possible
-   - Enter delivery address: 830 Birch Ave, Sunnyvale, CA 94086
-   - Enter recipient name: Si Chang
-   - Complete as much of checkout as possible (may require \
-sign-in)
+HIGH-LEVEL WORKFLOW:
+1. Authenticate into the system
+2. Navigate to the Jobs section
+3. Search for the target job posting
+4. Open the job from search results
+5. Access the applications review area
 
-Be persistent and complete the shopping order!"""
+SUCCESS CRITERIA:
+You've completed the task when you reach the page where you can view candidate applications for the job.
+
+GUIDELINES:
+- Take your time between actions to let pages load
+- If something doesn't work, try alternative approaches
+- Report success with the job name when you reach the applications page"""
     
     # ============================================================
     # AGENT SETUP
     # ============================================================
     
     print("\n" + "="*70)
-    print("COSTCO SHOPPING AGENT DEMO (LangGraph)")
+    print("GREENHOUSE ATS JOB NAVIGATION AGENT DEMO (LangGraph)")
     print("="*70)
-    print(f"\nTask: {task}")
+    print(f"\nTask: Login, search for a job, and navigate to applications")
     print(f"\nUsing: LangGraph + Azure OpenAI ({deployment_name})")
     print("="*70 + "\n")
     
@@ -100,7 +111,7 @@ Be persistent and complete the shopping order!"""
     agent = LangGraphBrowserAgent(
         task=task,
         headless=False,  # Set to True to hide browser window
-        max_steps=50  # Increased for complex shopping task
+        max_steps=20  # Simplified workflow
     )
     
     # ============================================================
@@ -111,7 +122,7 @@ Be persistent and complete the shopping order!"""
         result = await agent.run()
         
         print("\n" + "="*70)
-        print("SHOPPING COMPLETE!")
+        print("NAVIGATION COMPLETE!")
         print("="*70)
         print(f"\n{result}\n")
         print("="*70 + "\n")
@@ -123,7 +134,7 @@ Be persistent and complete the shopping order!"""
 
 
 if __name__ == '__main__':
-    # Run the Costco grocery shopping demo
+    # Run the Greenhouse job posting demo
     asyncio.run(main())
 
 

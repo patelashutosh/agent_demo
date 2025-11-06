@@ -42,31 +42,151 @@ if "AZURE_OPENAI_CHAT_DEPLOYMENT_NAME" not in os.environ:
     )
 
 
-# --- 2. Define a Mock Tool ---
-# We'll create a simple "get_weather" tool for the agent to call.
+# --- 2. Define Mock Tools ---
+
 @tool
-def get_weather(city: str) -> str:
+def get_stock_price(symbol: str) -> str:
     """
-    Get the current weather for a specific city.
+    Get the current stock price for stocks (NSE/BSE).
     
     Args:
-        city: The name of the city.
+        symbol: The stock symbol (e.g., RELIANCE, TCS, INFY, HDFCBANK).
     """
-    print(f"--- Calling get_weather tool for {city} ---")
-    # In a real app, you'd call a weather API here.
-    # For this demo, we'll return a mock response.
-    if "san francisco" in city.lower():
-        return json.dumps(
-            {"city": "San Francisco", "temperature": "15°C", "conditions": "Foggy"}
-        )
-    elif "new york" in city.lower():
-        return json.dumps(
-            {"city": "New York", "temperature": "22°C", "conditions": "Sunny"}
-        )
+    print(f"--- Calling get_stock_price tool for {symbol} ---")
+    # In a real app, you'd call a stock API here (e.g., Yahoo Finance, Alpha Vantage).
+    # For this demo, we'll return mock responses.
+    
+    stock_data = {
+        "reliance": {
+            "company": "Reliance Industries Ltd",
+            "price": "₹2,450.50",
+            "change": "+15.25 (+0.63%)",
+            "exchange": "NSE"
+        },
+        "tcs": {
+            "company": "Tata Consultancy Services",
+            "price": "₹3,680.00",
+            "change": "-22.50 (-0.61%)",
+            "exchange": "NSE"
+        },
+        "infy": {
+            "company": "Infosys Ltd",
+            "price": "₹1,420.75",
+            "change": "+8.90 (+0.63%)",
+            "exchange": "NSE"
+        },
+        "hdfcbank": {
+            "company": "HDFC Bank Ltd",
+            "price": "₹1,650.20",
+            "change": "+12.30 (+0.75%)",
+            "exchange": "NSE"
+        },
+        "wipro": {
+            "company": "Wipro Ltd",
+            "price": "₹450.35",
+            "change": "-3.15 (-0.69%)",
+            "exchange": "NSE"
+        }
+    }
+    
+    symbol_lower = symbol.lower().replace(".ns", "")
+    
+    if symbol_lower in stock_data:
+        data = stock_data[symbol_lower]
+        return json.dumps(data)
     else:
-        return json.dumps(
-            {"city": city, "temperature": "20°C", "conditions": "Clear skies"}
-        )
+        return json.dumps({
+            "company": symbol,
+            "price": "₹1,250.00",
+            "change": "+5.00 (+0.40%)",
+            "exchange": "NSE"
+        })
+
+
+@tool
+def convert_currency(amount: float, from_currency: str, to_currency: str) -> str:
+    """
+    Convert currency from one denomination to another.
+    
+    Args:
+        amount: The amount to convert.
+        from_currency: Source currency code (e.g., USD, INR, EUR, GBP).
+        to_currency: Target currency code (e.g., USD, INR, EUR, GBP).
+    """
+    print(f"--- Calling convert_currency tool: {amount} {from_currency} to {to_currency} ---")
+    # In a real app, you'd call a currency API here (e.g., exchangerate-api.com, fixer.io).
+    # For this demo, we'll use approximate exchange rates.
+    
+    # Exchange rates (as of example date, relative to INR)
+    rates_to_inr = {
+        "inr": 1.0,
+        "usd": 83.0,
+        "eur": 90.0,
+        "gbp": 105.0,
+        "jpy": 0.55,
+        "aed": 22.6,
+        "sgd": 62.0,
+        "cad": 61.0,
+        "aud": 55.0
+    }
+    
+    from_curr = from_currency.lower()
+    to_curr = to_currency.lower()
+    
+    if from_curr not in rates_to_inr or to_curr not in rates_to_inr:
+        return json.dumps({
+            "error": f"Unsupported currency: {from_currency} or {to_currency}",
+            "supported": "USD, INR, EUR, GBP, JPY, AED, SGD, CAD, AUD"
+        })
+    
+    # Convert to INR first, then to target currency
+    amount_in_inr = amount * rates_to_inr[from_curr]
+    converted_amount = amount_in_inr / rates_to_inr[to_curr]
+    
+    return json.dumps({
+        "from": f"{amount} {from_currency.upper()}",
+        "to": f"{converted_amount:.2f} {to_currency.upper()}",
+        "rate": f"1 {from_currency.upper()} = {rates_to_inr[from_curr] / rates_to_inr[to_curr]:.4f} {to_currency.upper()}"
+    })
+
+
+@tool
+def get_cricket_score(match_type: str = "live") -> str:
+    """
+    Get live or recent cricket match scores.
+    
+    Args:
+        match_type: Type of match info to retrieve - "live", "recent", or "upcoming".
+    """
+    print(f"--- Calling get_cricket_score tool for {match_type} matches ---")
+    # In a real app, you'd call a cricket API here (e.g., Cricbuzz API, ESPN Cricinfo).
+    # For this demo, we'll return mock match data.
+    
+    if match_type == "live":
+        return json.dumps({
+            "status": "live",
+            "match": "India vs Australia - 3rd ODI",
+            "venue": "Narendra Modi Stadium, Ahmedabad",
+            "score": "India: 289/7 (48.2 overs) | Target: 287",
+            "current": "India need 8 runs to win from 10 balls",
+            "batsmen": "Hardik Pandya 45* (32), Ravindra Jadeja 28* (19)"
+        })
+    elif match_type == "recent":
+        return json.dumps({
+            "status": "completed",
+            "match": "India vs South Africa - 2nd T20I",
+            "result": "India won by 16 runs",
+            "scores": "India: 180/7 (20 overs) | South Africa: 164/8 (20 overs)",
+            "player_of_match": "Suryakumar Yadav (68 off 40)"
+        })
+    else:  # upcoming
+        return json.dumps({
+            "status": "upcoming",
+            "match": "India vs England - 1st Test",
+            "venue": "Rajiv Gandhi International Stadium, Hyderabad",
+            "date": "January 25, 2025",
+            "time": "09:30 AM IST"
+        })
 
 
 # --- 3. Define the Agent State ---
@@ -81,14 +201,18 @@ class AgentState(TypedDict):
 
 # Initialize the AzureChatOpenAI model
 # It will automatically read the AZURE_OPENAI_API_KEY from the environment
+# Configured with retry logic for rate limit handling
 llm = AzureChatOpenAI(
     api_version=os.environ["OPENAI_API_VERSION"],
     azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
     azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+    max_retries=5,  # Retry up to 5 times on failures (handles rate limits)
+    timeout=60.0,   # 60 second timeout per request
+    # The OpenAI client automatically handles exponential backoff for 429 errors
 )
 
 # Create a list of tools our agent can use
-tools = [get_weather]
+tools = [get_stock_price, convert_currency, get_cricket_score]
 
 # Bind the tools to the LLM. This tells the LLM it can call these tools.
 llm_with_tools = llm.bind_tools(tools)
@@ -153,17 +277,17 @@ print("✅ Graph compiled successfully!")
 
 # --- 7. Run the Demo ---
 
-print("\n" + "=" * 50)
-print("🚀 DEMO 1: Query that requires a tool call")
-print("=" * 50)
+print("\n" + "=" * 70)
+print("🚀 DEMO 1: Query that requires tool call - Stock Price")
+print("=" * 70)
 
 # We use .stream() to see all the steps in the graph
 # The input is a dictionary matching the AgentState
-inputs_tool = {
-    "messages": [HumanMessage(content="What is the weather in San Francisco?")]
+inputs_stock = {
+    "messages": [HumanMessage(content="What is the current price of TCS stock?")]
 }
 
-for event in graph.stream(inputs_tool, stream_mode="values"):
+for event in graph.stream(inputs_stock, stream_mode="values"):
     # `stream_mode="values"` yields the full state at each step
     latest_message = event["messages"][-1]
     print(f"\nNode: '{event.get('__key__', 'entry')}'")
@@ -174,15 +298,52 @@ for event in graph.stream(inputs_tool, stream_mode="values"):
     elif isinstance(latest_message, ToolMessage):
         print(f"Tool Result: {latest_message.content}")
 
-print("\n" + "=" * 50)
-print("🚀 DEMO 2: Query that does NOT require a tool call")
-print("=" * 50)
+print("\n" + "=" * 70)
+print("🚀 DEMO 2: Query that requires tool call - Currency Conversion")
+print("=" * 70)
 
-inputs_no_tool = {"messages": [HumanMessage(content="Hi, my name is Bob.")]}
+inputs_currency = {
+    "messages": [HumanMessage(content="Convert 100 USD to INR")]
+}
+
+for event in graph.stream(inputs_currency, stream_mode="values"):
+    latest_message = event["messages"][-1]
+    print(f"\nNode: '{event.get('__key__', 'entry')}'")
+    print("---")
+    latest_message.pretty_print()
+    if isinstance(latest_message, AIMessage) and latest_message.tool_calls:
+        print(f"Tool Call: {latest_message.tool_calls[0]['name']}")
+    elif isinstance(latest_message, ToolMessage):
+        print(f"Tool Result: {latest_message.content}")
+
+print("\n" + "=" * 70)
+print("🚀 DEMO 3: Query that requires tool call - Cricket Scores")
+print("=" * 70)
+
+inputs_cricket = {
+    "messages": [HumanMessage(content="What are the live cricket scores?")]
+}
+
+for event in graph.stream(inputs_cricket, stream_mode="values"):
+    latest_message = event["messages"][-1]
+    print(f"\nNode: '{event.get('__key__', 'entry')}'")
+    print("---")
+    latest_message.pretty_print()
+    if isinstance(latest_message, AIMessage) and latest_message.tool_calls:
+        print(f"Tool Call: {latest_message.tool_calls[0]['name']}")
+    elif isinstance(latest_message, ToolMessage):
+        print(f"Tool Result: {latest_message.content}")
+
+print("\n" + "=" * 70)
+print("🚀 DEMO 4: Query that does NOT require a tool call")
+print("=" * 70)
+
+inputs_no_tool = {"messages": [HumanMessage(content="Hi, my name is Ashutosh. Nice to meet you!")]}
 
 for event in graph.stream(inputs_no_tool, stream_mode="values"):
     latest_message = event["messages"][-1]
     print(f"\nNode: '{event.get('__key__', 'entry')}'")
     print("---")
     latest_message.pretty_print()
+
 

@@ -320,13 +320,17 @@ def create_browser_agent_graph(
     logger.info("🏗️ Building LangGraph browser agent...")
     
     # Create single LLM client for both vision and planning
+    # With retry configuration for rate limit handling
     llm = AzureChatOpenAI(
         api_key=api_key,
         api_version=api_version,
         azure_deployment=model,
-        azure_endpoint=azure_endpoint
+        azure_endpoint=azure_endpoint,
+        max_retries=5,  # Retry up to 5 times on failures
+        timeout=60.0,   # 60 second timeout per request
+        # Request timeout and retry are handled by the OpenAI client
     )
-    logger.info(f"✅ LLM client configured: {model}")
+    logger.info(f"✅ LLM client configured: {model} (with retry logic)")
     
     # Create browser tools (using the same LLM)
     browser_tools = create_browser_tools(browser, llm, model)

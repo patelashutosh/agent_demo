@@ -1,208 +1,208 @@
 # Chat Agent with Tool Calling
 
-A LangGraph-based conversational agent that uses Azure OpenAI and can automatically call tools to answer questions.
+This demo shows how to build a conversational AI agent using **LangChain**, **LangGraph**, and **Azure OpenAI** with multiple tools.
 
-## 🎯 What This Demo Does
+## 🎯 What This Demo Shows
 
-The chat agent:
-1. **Receives user queries** through a conversational interface
-2. **Decides automatically** whether to use tools or respond directly
-3. **Calls tools** (like getting weather information) when needed
-4. **Synthesizes natural language responses** based on tool results
-5. **Maintains conversation history** across multiple turns
+This example demonstrates:
+- **LangGraph State Management**: Using TypedDict to define agent state
+- **Tool Calling (Function Calling)**: LLM decides which tools to call based on user queries
+- **Multiple Tools**: Agent has access to 3 different tools
+- **ReAct Pattern**: Observe → Plan → Act → Repeat cycle
+
+## 🛠️ Available Tools
+
+The agent can use these tools:
+
+### 1. Stock Price Checker 📈
+Get real-time stock prices for companies (NSE/BSE):
+- **Examples**: TCS, Infosys, Reliance, HDFC Bank, Wipro
+- **Returns**: Current price, change, percentage, exchange
+
+### 2. Currency Converter 💱
+Convert between different currencies:
+- **Supported**: USD, INR, EUR, GBP, JPY, AED, SGD, CAD, AUD
+- **Returns**: Converted amount and exchange rate
+
+### 3. Cricket Score Tracker 🏏
+Get live, recent, or upcoming cricket match information:
+- **Types**: Live scores, recent results, upcoming matches
+- **Returns**: Match details, scores, player stats
 
 ## 🏗️ Architecture
 
-The agent uses a state graph with two main nodes:
-- **Observe & Planning Node**: Analyzes the current state and decides the next action
-- **Action Node**: Executes the requested tools/actions
-
-### Flow Diagram:
 ```
-User Input → Observe & Planning (LLM) → Action Needed? 
-                                      ├─ Yes → Execute Action → Observe & Planning (LLM) → Response
-                                      └─ No → Direct Response
+User Query → Observe & Plan Node (LLM) → Decision
+                                             ↓
+                                    Tool Call? 
+                                    /        \
+                                  Yes         No
+                                   ↓           ↓
+                          Action Node      Response
+                          (Execute Tool)      ↓
+                                ↓            End
+                          Back to LLM
+                          (Process Result)
+                                ↓
+                           Final Response
 ```
 
-## 🚀 How to Run
+### Graph Nodes
+
+1. **observe_and_planning**: 
+   - Analyzes current conversation state
+   - Decides whether to call a tool or respond directly
+   - Uses LLM with tool definitions
+
+2. **action**: 
+   - Executes the selected tool
+   - Returns results to the graph state
+
+### Graph Flow
+
+- **Entry Point**: `observe_and_planning`
+- **Conditional Edge**: Based on whether LLM made a tool call
+  - If tool call → go to `action` node
+  - If no tool call → END (return response)
+- **Loop**: `action` → back to `observe_and_planning` (to process tool results)
+
+## 📦 Code Structure
+
+```python
+# 1. Define Tools using @tool decorator
+@tool
+def get_stock_price(symbol: str) -> str:
+    """Get stock price for stocks"""
+    # Tool implementation
+    
+# 2. Define Agent State
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+
+# 3. Create Graph
+graph_builder = StateGraph(AgentState)
+graph_builder.add_node("observe_and_planning", observe_and_plan)
+graph_builder.add_node("action", action_node)
+graph_builder.add_conditional_edges("observe_and_planning", tools_condition, {...})
+graph = graph_builder.compile()
+
+# 4. Run Agent
+result = graph.stream({"messages": [user_message]})
+```
+
+## 🚀 Running the Demo
 
 ### Prerequisites
-Make sure you've completed the environment setup in the [root README](../README.md):
-- ✅ Created virtual environment
-- ✅ Installed dependencies
-- ✅ Configured `.env` file with Azure credentials
+1. Python 3.8+
+2. Azure OpenAI account with credentials in `.env` file
 
-### Run the Demo
-
-From the **root directory** (`agent_demo/`):
+### Run
 ```bash
 cd chat_agent
 python chat_agent_demo.py
 ```
 
-Or from anywhere:
-```bash
-python chat_agent/chat_agent_demo.py
+### Expected Output
+
+The demo runs 4 scenarios:
+
+**Demo 1**: Stock Price Query
+```
+User: "What is the current price of TCS stock?"
+→ LLM calls get_stock_price("TCS")
+→ Tool returns: {"company": "Tata Consultancy Services", "price": "₹3,680.00", ...}
+→ LLM responds: "The current price of TCS is ₹3,680.00, down by 0.61%"
 ```
 
-## 📊 Example Output
-
-### Demo 1: Query with Tool Call
+**Demo 2**: Currency Conversion
 ```
-🚀 DEMO 1: Query that requires a tool call
-
-User: "What is the weather in San Francisco?"
-
---- Observing & Planning (Calling LLM) ---
-Agent → Decides to call get_weather tool
-
---- Calling get_weather tool for San Francisco ---
-Action → Returns: {"city": "San Francisco", "temperature": "15°C", "conditions": "Foggy"}
-
---- Observing & Planning (Calling LLM) ---
-Agent → "Right now in San Francisco it's 15°C (59°F) and foggy. 
-         Expect reduced visibility — a light jacket or layers are recommended."
+User: "Convert 100 USD to INR"
+→ LLM calls convert_currency(100, "USD", "INR")
+→ Tool returns: {"from": "100 USD", "to": "8300.00 INR", ...}
+→ LLM responds: "100 USD is equal to ₹8,300.00"
 ```
 
-### Demo 2: Query without Tool Call
+**Demo 3**: Cricket Scores
 ```
-🚀 DEMO 2: Query that does NOT require a tool call
-
-User: "Hi, my name is Bob."
-
---- Observing & Planning (Calling LLM) ---
-Agent → "Hi Bob — nice to meet you! How can I help you today?"
+User: "What are the live cricket scores?"
+→ LLM calls get_cricket_score("live")
+→ Tool returns: {"match": "India vs Australia", "score": ..., ...}
+→ LLM responds: "India is currently playing Australia. India needs 8 runs..."
 ```
 
-## 🔧 Key Components
+**Demo 4**: No Tool Needed
+```
+User: "Hi, my name is Priya. Nice to meet you!"
+→ LLM responds directly without calling any tool
+→ "Hello Priya! Nice to meet you too!"
+```
 
-### 1. Tools
-The demo includes a `get_weather` tool that returns mock weather data:
+## 🔑 Key Concepts
 
+### 1. **Tool/Function Calling**
+- LLM can "call" predefined functions when needed
+- LLM provides function name + arguments as structured output
+- Your code executes the actual function
+- Result goes back to LLM to formulate final response
+
+### 2. **LangGraph State Graph**
+- Graph-based workflow for agents
+- **Nodes**: Steps in the workflow (planning, action execution)
+- **Edges**: Connections between nodes
+- **State**: Shared data that flows through the graph
+
+### 3. **ReAct Pattern (Reason + Act)**
+- **Observe**: Analyze current state
+- **Plan**: Decide what action to take
+- **Act**: Execute the action
+- **Repeat**: Continue until task complete
+
+### 4. **Tool Binding**
 ```python
-@tool
-def get_weather(city: str) -> str:
-    """
-    Get the current weather for a specific city.
-    
-    Args:
-        city: The name of the city.
-    """
-    # Returns mock weather data for demo purposes
+llm_with_tools = llm.bind_tools(tools)
 ```
+This tells the LLM what functions are available and their signatures.
 
-**How it works:**
-- The `@tool` decorator automatically generates a schema for the LLM
-- The docstring helps the LLM decide when to use the tool
-- The LLM extracts the city parameter from user queries
+## 🎓 Learning Path
 
-### 2. State Management
+1. **Start Here**: Understand how tools are defined (`@tool` decorator)
+2. **Graph Structure**: See how nodes connect with conditional edges
+3. **State Management**: How messages flow through the graph
+4. **Tool Execution**: How ToolNode automatically executes the called function
+5. **Loop Pattern**: How results come back for LLM to process
 
-```python
-class AgentState(TypedDict):
-    messages: Annotated[list, add_messages]
-```
+## 📚 Extension Ideas
 
-- **State**: A dictionary containing conversation history
-- **messages**: A list that grows with each interaction
-- **add_messages**: Ensures new messages are appended, not replaced
+1. **Real APIs**: Replace mock data with actual APIs
+   - Stock: Yahoo Finance API, Alpha Vantage
+   - Currency: exchangerate-api.com, fixer.io
+   - Cricket: Cricbuzz API, ESPN Cricinfo
 
-### 3. Graph Structure
+2. **More Tools**: Add additional tools
+   - Weather information
+   - News articles
+   - Database queries
+   - File operations
 
-```python
-graph_builder = StateGraph(AgentState)
-graph_builder.add_node("observe_and_planning", observe_and_plan)
-graph_builder.add_node("action", action_node)
-graph_builder.add_conditional_edges("observe_and_planning", tools_condition)
-graph_builder.add_edge("action", "observe_and_planning")
-```
+3. **Memory**: Add conversation history
+   - Remember user preferences
+   - Context across multiple queries
+   - Vector database for long-term memory
 
-- **Conditional edges**: Routes to action node if LLM decides to call tools
-- **Loop back**: Action results go back to observe_and_planning for final response
+4. **Human-in-the-Loop**: Add confirmation step
+   - Ask user before executing certain actions
+   - Show tool parameters before execution
 
-## 📝 Customizing the Demo
+## 🤔 Discussion Questions
 
-### Adding New Tools
+1. What happens if LLM calls wrong tool or wrong parameters?
+2. How do we handle tool execution failures?
+3. When should we use tools vs. LLM's built-in knowledge?
+4. How to prevent infinite loops in graph execution?
+5. How to add authentication to tool calls?
 
-Add new tools by defining functions with the `@tool` decorator:
+## 📖 References
 
-```python
-@tool
-def calculate(expression: str) -> str:
-    """
-    Evaluate a mathematical expression.
-    
-    Args:
-        expression: A math expression to evaluate (e.g., "2 + 2")
-    """
-    try:
-        result = eval(expression)
-        return str(result)
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# Add to tools list
-tools = [get_weather, calculate]
-```
-
-### Changing Questions
-
-Modify the demo queries at the bottom of `chat_agent_demo.py`:
-
-```python
-# Custom query
-inputs = {
-    "messages": [HumanMessage(content="Your question here")]
-}
-
-for event in graph.stream(inputs, stream_mode="values"):
-    # Process results...
-```
-
-### Adjusting LLM Settings
-
-```python
-llm = AzureChatOpenAI(
-    api_version=os.environ["OPENAI_API_VERSION"],
-    azure_deployment=os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"],
-    azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-    # Note: Some models only support default temperature
-    # temperature=0.7,  # Uncomment if your model supports it
-    # max_tokens=500,   # Limit response length
-)
-```
-
-## 🎓 What You'll Learn
-
-This demo teaches:
-- ✅ Setting up LangGraph with Azure OpenAI
-- ✅ Defining tools using the `@tool` decorator
-- ✅ Building state graphs for multi-step agents
-- ✅ Handling conditional flows (tool vs direct response)
-- ✅ Managing conversation state with reducers
-- ✅ Real-world API integration patterns
-
-## 🐛 Common Issues
-
-### Tool Not Being Called
-- **Check docstring**: Make sure it clearly describes when to use the tool
-- **Ensure tool is in list**: Verify it's added to `tools = [get_weather, ...]`
-- **Be explicit**: Try a more direct query like "Use get_weather for Tokyo"
-
-### Model Doesn't Support Temperature
-Some models (like gpt-5-mini) only support default temperature. Remove the `temperature` parameter if you see this error.
-
-### Import Errors
-Make sure you're running from the correct directory and the virtual environment is activated.
-
-## 📚 Next Steps
-
-- Add more sophisticated tools (database queries, API calls)
-- Implement error handling for tool failures
-- Add conversation memory persistence
-- Build a web interface for the agent
-- Deploy as a REST API or chatbot
-
----
-
-**Happy Building! 🚀**
+- [LangChain Documentation](https://python.langchain.com/)
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [Azure OpenAI Function Calling](https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/function-calling)
