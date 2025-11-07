@@ -66,9 +66,6 @@ agent_demo/
 ├── greenhouse_agent/        # Browser agent demo - ATS automation
 │   ├── greenhouse_demo.py
 │   └── README.md
-├── doc/                     # Presentation materials
-│   ├── AI_Agent_Session_Presentation.md
-│   └── SESSION_PREPARATION_GUIDE.md
 ├── requirements.txt         # Python dependencies
 ├── env.example             # Template for environment variables
 ├── .env                    # Your credentials (not in git)
@@ -126,27 +123,6 @@ An autonomous browser agent that logs into Greenhouse ATS and navigates to job a
 **Perfect for**: Demonstrating autonomous agents, browser automation, AI-powered RPA
 
 **Note**: This demo uses the `simple_browser_agent/` framework. The framework is reusable - you can create additional demos (LinkedIn automation, GitHub Actions, etc.) using the same underlying browser engine.
-
----
-
-## 🎓 Knowledge Sharing Session
-
-This repository includes complete presentation materials for conducting AI Agent knowledge sharing sessions:
-
-📄 **Presentation**: [doc/AI_Agent_Session_Presentation.md](doc/AI_Agent_Session_Presentation.md)
-📖 **Session Guide**: [doc/SESSION_PREPARATION_GUIDE.md](doc/SESSION_PREPARATION_GUIDE.md)
-
-**Topics Covered**:
-- What are AI Agents? (Evolution from chatbots)
-- Function Calling / Tool Usage
-- LangGraph Architecture
-- ReAct Pattern (Reason + Act)
-- Model Context Protocol (MCP)
-- Agent Memory
-- Autonomous Browser Agents
-- Live Demos
-
-**Duration**: 60-90 minutes with live demos
 
 ---
 
